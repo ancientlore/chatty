@@ -1,0 +1,8 @@
+services:
+  chatty:
+    image: ancientlore/chatty:latest
+    container_name: chatty
+    command: ["-token", "${GOOGLE_AI_TOKEN}", "-system", "/home/system.txt"]
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
