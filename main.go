@@ -70,6 +70,9 @@ func main() {
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Write([]byte(resp))
+		if len([]byte(resp)) > 200 {
+			slog.Warn("response too long", "length", len([]byte(resp)), "response", resp)
+		}
 	})
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
