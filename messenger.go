@@ -34,8 +34,8 @@ func messenger(ctx context.Context, client *genai.Client, model, systemInstructi
 	go func() {
 		for msg := range input {
 			// If history is getting long, restart the chat
-			history := chat.History(false)
-			//slog.Info("history", "historyLen", len(history), "history", fmt.Sprintf("%+v", history))
+			history := chat.History(true)
+			// slog.Info("history", "historyLen", len(history), "history", fmt.Sprintf("%+v", history))
 			if len(history) > 20 {
 				chat, err = client.Chats.Create(ctx, model, config, history[10:])
 				if err != nil {
