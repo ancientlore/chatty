@@ -43,11 +43,21 @@ func main() {
 		}
 	}
 
-	chatModel, err := NewChatModel(context.Background(), token, systemInstruction)
+	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
+		APIKey:  token,
+		Backend: genai.BackendGeminiAPI,
+	})
+	if err != nil {
+		slog.Error("failed to create client", "error", err)
+		os.Exit(1)
+	}
+
+	input, err := messenger(context.Background(), client, "gemini-2.5-flash-lite", systemInstruction)
 	if err != nil {
 		slog.Error("failed to create chat model", "error", err)
 		os.Exit(1)
 	}
+	defer close(input)
 
 	// Create a new ServeMux
 	mux := http.NewServeMux()
@@ -59,17 +69,20 @@ func main() {
 			return
 		}
 
-		resp, err := chatModel.SendMessage(r.Context(), msg)
-		if err != nil {
-			slog.Error("failed to send message", "error", err)
+		respChan := make(chan response)
+		input <- request{Msg: msg, RespChan: respChan}
+		resp := <-respChan
+
+		if resp.Err != nil {
+			slog.Error("failed to send message", "error", resp.Err)
 			http.Error(w, "failed to get response from AI", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(resp))
-		if len([]byte(resp)) > 200 {
-			slog.Warn("response too long", "length", len([]byte(resp)), "response", resp)
+		w.Write([]byte(resp.Text))
+		if len([]byte(resp.Text)) > 200 {
+			slog.Warn("response too long", "length", len([]byte(resp.Text)), "response", resp.Text)
 		}
 	})
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
@@ -121,50 +134,6 @@ func main() {
 	}
 
 	slog.Info("shutdown complete", "addr", addr)
-}
-
-type ChatModel struct {
-	client *genai.Client
-	chat   *genai.Chat
-}
-
-func NewChatModel(ctx context.Context, token, systemInstruction string) (*ChatModel, error) {
-	client, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey:  token,
-		Backend: genai.BackendGeminiAPI,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	config := &genai.GenerateContentConfig{}
-	if systemInstruction != "" {
-		config.SystemInstruction = &genai.Content{
-			Parts: []*genai.Part{{Text: systemInstruction}},
-		}
-	}
-
-	chat, err := client.Chats.Create(ctx, "gemini-2.5-flash-lite", config, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &ChatModel{client: client, chat: chat}, nil
-}
-
-func (m *ChatModel) SendMessage(ctx context.Context, msg string) (string, error) {
-	resp, err := m.chat.SendMessage(ctx, genai.Part{Text: msg})
-	if err != nil {
-		return "", err
-	}
-	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
-		return "", nil
-	}
-	for _, part := range resp.Candidates[0].Content.Parts {
-		if part.Text != "" {
-			return part.Text, nil
-		}
-	}
-	return "", nil
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
