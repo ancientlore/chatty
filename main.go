@@ -10,8 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/option"
+	"google.golang.org/genai"
 )
 
 func main() {
@@ -22,12 +21,12 @@ func main() {
 	)
 
 	flag.StringVar(&addr, "addr", ":8080", "TCP host:port to listen on")
-	flag.StringVar(&token, "token", "", "Google AI Token")
 	flag.StringVar(&system, "system", "system.txt", "Path to system instructions file")
 	flag.Parse()
 
+	token = os.Getenv("GEMINI_API_KEY")
 	if token == "" {
-		slog.Error("token is required")
+		slog.Error("GEMINI_API_KEY is required")
 		os.Exit(1)
 	}
 
@@ -49,7 +48,6 @@ func main() {
 		slog.Error("failed to create chat model", "error", err)
 		os.Exit(1)
 	}
-	defer chatModel.Close()
 
 	// Create a new ServeMux
 	mux := http.NewServeMux()
@@ -126,41 +124,47 @@ func main() {
 }
 
 type ChatModel struct {
-	client  *genai.Client
-	session *genai.ChatSession
+	client *genai.Client
+	chat   *genai.Chat
 }
 
 func NewChatModel(ctx context.Context, token, systemInstruction string) (*ChatModel, error) {
-	client, err := genai.NewClient(ctx, option.WithAPIKey(token))
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  token,
+		Backend: genai.BackendGeminiAPI,
+	})
 	if err != nil {
 		return nil, err
 	}
-	model := client.GenerativeModel("gemini-2.5-flash")
+
+	config := &genai.GenerateContentConfig{}
 	if systemInstruction != "" {
-		model.SystemInstruction = genai.NewUserContent(genai.Text(systemInstruction))
+		config.SystemInstruction = &genai.Content{
+			Parts: []*genai.Part{{Text: systemInstruction}},
+		}
 	}
-	session := model.StartChat()
-	return &ChatModel{client: client, session: session}, nil
+
+	chat, err := client.Chats.Create(ctx, "gemini-2.5-flash-lite", config, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &ChatModel{client: client, chat: chat}, nil
 }
 
 func (m *ChatModel) SendMessage(ctx context.Context, msg string) (string, error) {
-	resp, err := m.session.SendMessage(ctx, genai.Text(msg))
+	resp, err := m.chat.SendMessage(ctx, genai.Part{Text: msg})
 	if err != nil {
 		return "", err
 	}
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
 		return "", nil
 	}
 	for _, part := range resp.Candidates[0].Content.Parts {
-		if txt, ok := part.(genai.Text); ok {
-			return string(txt), nil
+		if part.Text != "" {
+			return part.Text, nil
 		}
 	}
 	return "", nil
-}
-
-func (m *ChatModel) Close() {
-	m.client.Close()
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
