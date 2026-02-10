@@ -2,7 +2,9 @@ services:
   chatty0:
     image: ancientlore/chatty:latest
     container_name: chatty0
-    command: ["-token", "${GEMINI_API_KEY}", "-system", "/etc/chatty/system.txt"]
+    command: ["-system", "/etc/chatty/system.txt"]
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     ports:
       - "8080:8080"
     volumes:
@@ -11,7 +13,9 @@ services:
   chatty1:
     image: ancientlore/chatty:latest
     container_name: chatty1
-    command: ["-token", "${GEMINI_API_KEY}", "-system", "/etc/chatty/system.txt"]
+    command: ["-system", "/etc/chatty/system.txt"]
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     ports:
       - "8081:8080"
     volumes:
