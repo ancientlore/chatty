@@ -69,8 +69,16 @@ func main() {
 			return
 		}
 
+		metadata := make(map[string]string)
+		for _, key := range []string{"channel", "node_id", "short_name", "long_name", "hops", "snr", "rssi", "node_count"} {
+			value := r.URL.Query().Get(key)
+			if value != "" {
+				metadata[key] = value
+			}
+		}
+
 		respChan := make(chan response)
-		input <- request{Msg: msg, RespChan: respChan}
+		input <- request{Msg: msg, Metadata: metadata, RespChan: respChan}
 		resp := <-respChan
 
 		if resp.Err != nil {

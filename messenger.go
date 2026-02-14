@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"google.golang.org/genai"
 )
 
 type request struct {
 	Msg      string
+	Metadata map[string]string
 	RespChan chan response
 }
 
@@ -45,7 +48,17 @@ func messenger(ctx context.Context, client *genai.Client, model, systemInstructi
 			}
 
 			// Process message
-			resp, err := chat.SendMessage(ctx, genai.Part{Text: msg.Msg})
+			parts := []genai.Part{}
+			if len(msg.Metadata) > 0 {
+				var meta string
+				for k, v := range msg.Metadata {
+					meta += fmt.Sprintf("%s: %s\n", strings.ToUpper(k), v)
+				}
+				parts = append(parts, genai.Part{Text: meta})
+			}
+			parts = append(parts, genai.Part{Text: msg.Msg})
+
+			resp, err := chat.SendMessage(ctx, parts...)
 			if err != nil {
 				msg.RespChan <- response{Err: err}
 				continue
