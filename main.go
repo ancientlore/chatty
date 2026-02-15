@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"log/slog"
@@ -144,13 +145,26 @@ func main() {
 	slog.Info("shutdown complete", "addr", addr)
 }
 
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	result bytes.Buffer
+}
+
+func (w *loggingResponseWriter) Write(b []byte) (int, error) {
+	w.result.Write(b)
+	return w.ResponseWriter.Write(b)
+}
+
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
+		var wr loggingResponseWriter
+		wr.ResponseWriter = w
+
 		// Wrap the ResponseWriter to capture the status code
 		wrapped := &wrappedWriter{
-			ResponseWriter: w,
+			ResponseWriter: &wr,
 			statusCode:     http.StatusOK, // Default to 200
 		}
 
@@ -163,6 +177,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			"status", wrapped.statusCode,
 			// "headers", r.Header,
 			"duration", time.Since(start),
+			"response", wr.result.String(),
 		)
 	})
 }
