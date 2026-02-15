@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"google.golang.org/genai"
@@ -17,6 +18,46 @@ type request struct {
 type response struct {
 	Text string
 	Err  error
+}
+
+func router(ctx context.Context, client *genai.Client, model, systemInstruction string) (chan<- request, error) {
+	chats := make(map[string]chan<- request)
+	input := make(chan request)
+
+	defer func() {
+		for name, ch := range chats {
+			slog.Info("closing chat channel", "chat", name)
+			close(ch)
+		}
+	}()
+
+	go func() {
+		for msg := range input {
+			name := msg.Metadata["channel"]
+			if name == "DM" || name == "" {
+				name = msg.Metadata["node_id"]
+			}
+			if name == "" {
+				msg.RespChan <- response{Err: fmt.Errorf("no channel or node_id found")}
+				continue
+			}
+
+			ch, ok := chats[name]
+			if !ok {
+				var err error
+				slog.Info("creating new chat", "chat", name)
+				ch, err = messenger(ctx, client, model, systemInstruction)
+				if err != nil {
+					msg.RespChan <- response{Err: err}
+					continue
+				}
+				chats[name] = ch
+			}
+			ch <- msg
+		}
+	}()
+
+	return input, nil
 }
 
 func messenger(ctx context.Context, client *genai.Client, model, systemInstruction string) (chan<- request, error) {

@@ -52,9 +52,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	input, err := messenger(context.Background(), client, "gemini-2.5-flash-lite", systemInstruction)
+	input, err := router(context.Background(), client, "gemini-2.5-flash-lite", systemInstruction)
 	if err != nil {
-		slog.Error("failed to create chat model", "error", err)
+		slog.Error("failed to create router", "error", err)
 		os.Exit(1)
 	}
 	defer close(input)
