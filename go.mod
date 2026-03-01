@@ -2,7 +2,7 @@ module github.com/ancientlore/chatty
 
 go 1.25.7
 
-require google.golang.org/genai v1.46.0
+require google.golang.org/genai v1.48.0
 
 require (
 	cloud.google.com/go v0.116.0 // indirect
