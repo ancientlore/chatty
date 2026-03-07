@@ -19,10 +19,12 @@ func main() {
 		addr   string
 		token  string
 		system string
+		prefix string
 	)
 
 	flag.StringVar(&addr, "addr", ":8080", "TCP host:port to listen on")
 	flag.StringVar(&system, "system", "system.txt", "Path to system instructions file")
+	flag.StringVar(&prefix, "prefix", "", "Prefix to include in response")
 	flag.Parse()
 
 	token = os.Getenv("GEMINI_API_KEY")
@@ -89,6 +91,9 @@ func main() {
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if len(prefix) > 0 {
+			w.Write([]byte(prefix))
+		}
 		w.Write([]byte(resp.Text))
 		if len([]byte(resp.Text)) > 200 {
 			slog.Warn("response too long", "length", len([]byte(resp.Text)), "response", resp.Text)
