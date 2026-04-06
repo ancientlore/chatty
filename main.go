@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/adk/agent"
+	"google.golang.org/adk/runner"
 	"google.golang.org/genai"
 )
 
@@ -46,21 +48,11 @@ func main() {
 		}
 	}
 
-	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
-		APIKey:  token,
-		Backend: genai.BackendGeminiAPI,
-	})
+	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction)
 	if err != nil {
-		slog.Error("failed to create client", "error", err)
+		slog.Error("failed to create runner", "error", err)
 		os.Exit(1)
 	}
-
-	input, err := router(context.Background(), client, "gemini-2.5-flash-lite", systemInstruction)
-	if err != nil {
-		slog.Error("failed to create router", "error", err)
-		os.Exit(1)
-	}
-	defer close(input)
 
 	// Create a new ServeMux
 	mux := http.NewServeMux()
@@ -72,7 +64,7 @@ func main() {
 			return
 		}
 
-		metadata := make(map[string]string)
+		metadata := make(map[string]any)
 		for _, key := range []string{"channel", "node_id", "short_name", "long_name", "hops", "snr", "rssi", "node_count"} {
 			value := r.URL.Query().Get(key)
 			if value != "" {
@@ -80,23 +72,49 @@ func main() {
 			}
 		}
 
-		respChan := make(chan response)
-		input <- request{Msg: msg, Metadata: metadata, RespChan: respChan}
-		resp := <-respChan
+		sessionID := r.URL.Query().Get("channel")
+		if sessionID == "DM" || sessionID == "" {
+			sessionID = r.URL.Query().Get("node_id")
+		}
+		if sessionID == "" {
+			sessionID = "default"
+		}
+		slog.Info("creating new chat", "session_id", sessionID)
+		ctx := r.Context()
+		userContent := &genai.Content{
+			Role:  "user",
+			Parts: []*genai.Part{{Text: msg}},
+		}
 
-		if resp.Err != nil {
-			slog.Error("failed to send message", "error", resp.Err)
-			http.Error(w, "failed to get response from AI", http.StatusInternalServerError)
-			return
+		var opts []runner.RunOption
+		if len(metadata) > 0 {
+			opts = append(opts, runner.WithStateDelta(metadata))
+		}
+
+		var respText string
+		events := run.Run(ctx, sessionID, sessionID, userContent, agent.RunConfig{}, opts...)
+		for event, err := range events {
+			if err != nil {
+				slog.Error("failed to get response from AI", "error", err)
+				http.Error(w, "failed to get response from AI", http.StatusInternalServerError)
+				return
+			}
+			if event.Content != nil {
+				for _, part := range event.Content.Parts {
+					if part.Text != "" {
+						respText += part.Text
+					}
+				}
+			}
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		if len(prefix) > 0 {
 			w.Write([]byte(prefix))
 		}
-		w.Write([]byte(resp.Text))
-		if len([]byte(resp.Text)) > 200 {
-			slog.Warn("response too long", "length", len([]byte(resp.Text)), "response", resp.Text)
+		w.Write([]byte(respText))
+		if len([]byte(respText)) > 200 {
+			slog.Warn("response too long", "length", len([]byte(respText)), "response", respText)
 		}
 	})
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {

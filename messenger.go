@@ -2,120 +2,59 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
-	"strings"
 
+	"google.golang.org/adk/agent/llmagent"
+	"google.golang.org/adk/model/gemini"
+	"google.golang.org/adk/runner"
+	"google.golang.org/adk/session"
+	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/geminitool"
 	"google.golang.org/genai"
 )
 
-type request struct {
-	Msg      string
-	Metadata map[string]string
-	RespChan chan response
-}
-
-type response struct {
-	Text string
-	Err  error
-}
-
-func router(ctx context.Context, client *genai.Client, model, systemInstruction string) (chan<- request, error) {
-	chats := make(map[string]chan<- request)
-	input := make(chan request)
-
-	defer func() {
-		for name, ch := range chats {
-			slog.Info("closing chat channel", "chat", name)
-			close(ch)
-		}
-	}()
-
-	go func() {
-		for msg := range input {
-			name := msg.Metadata["channel"]
-			if name == "DM" || name == "" {
-				name = msg.Metadata["node_id"]
-			}
-			if name == "" {
-				msg.RespChan <- response{Err: fmt.Errorf("no channel or node_id found")}
-				continue
-			}
-
-			ch, ok := chats[name]
-			if !ok {
-				var err error
-				slog.Info("creating new chat", "chat", name)
-				ch, err = messenger(ctx, client, model, systemInstruction)
-				if err != nil {
-					msg.RespChan <- response{Err: err}
-					continue
-				}
-				chats[name] = ch
-			}
-			ch <- msg
-		}
-	}()
-
-	return input, nil
-}
-
-func messenger(ctx context.Context, client *genai.Client, model, systemInstruction string) (chan<- request, error) {
-	config := &genai.GenerateContentConfig{}
-	if systemInstruction != "" {
-		config.SystemInstruction = &genai.Content{
-			Parts: []*genai.Part{{Text: systemInstruction}},
-		}
+func buildRunner(ctx context.Context, token, modelName, systemInstruction string) (*runner.Runner, error) {
+	// Initialize the genai client config
+	clientConfig := &genai.ClientConfig{
+		APIKey:  token,
+		Backend: genai.BackendGeminiAPI,
 	}
 
-	chat, err := client.Chats.Create(ctx, model, config, nil)
+	// Create the Gemini model
+	geminiModel, err := gemini.NewModel(ctx, modelName, clientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	input := make(chan request)
+	const extraContext = "Use the following context:\nNode ID: {node_id?}\nShort Name: {short_name?}\nLong Name: {long_name?}\nHops: {hops?}\nSNR: {snr?}\nRSSI: {rssi?}\nNode Count: {node_count?}"
 
-	go func() {
-		for msg := range input {
-			// If history is getting long, restart the chat
-			history := chat.History(true)
-			// slog.Info("history", "historyLen", len(history), "history", fmt.Sprintf("%+v", history))
-			if len(history) > 20 {
-				chat, err = client.Chats.Create(ctx, model, config, history[10:])
-				if err != nil {
-					msg.RespChan <- response{Err: err}
-					continue
-				}
-			}
+	// Create the main agent
+	agentCfg := llmagent.Config{
+		Name:        "chat_agent",
+		Description: "A smart assistant handling chat communications.",
+		Model:       geminiModel,
+		Instruction: systemInstruction + "\n" + extraContext,
+		Tools: []tool.Tool{
+			geminitool.GoogleSearch{},
+		},
+	}
 
-			// Process message
-			parts := []genai.Part{}
-			if len(msg.Metadata) > 0 {
-				var meta string
-				for k, v := range msg.Metadata {
-					meta += fmt.Sprintf("%s: %s\n", strings.ToUpper(k), v)
-				}
-				parts = append(parts, genai.Part{Text: meta})
-			}
-			parts = append(parts, genai.Part{Text: msg.Msg})
+	chatAgent, err := llmagent.New(agentCfg)
+	if err != nil {
+		return nil, err
+	}
 
-			resp, err := chat.SendMessage(ctx, parts...)
-			if err != nil {
-				msg.RespChan <- response{Err: err}
-				continue
-			}
-			if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
-				msg.RespChan <- response{Text: ""}
-				continue
-			}
-			for _, part := range resp.Candidates[0].Content.Parts {
-				if part.Text != "" {
-					msg.RespChan <- response{Text: part.Text}
-					break
-				}
-			}
-		}
-	}()
+	// Create the runner bounded to an in-memory session service
+	runnerCfg := runner.Config{
+		AppName:           "chatty",
+		Agent:             chatAgent,
+		SessionService:    session.InMemoryService(),
+		AutoCreateSession: true,
+	}
 
-	return input, nil
+	r, err := runner.New(runnerCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
