@@ -10,17 +10,6 @@ services:
     volumes:
       - chatty-config:/etc/chatty:ro
     restart: unless-stopped
-  chatty1:
-    image: ancientlore/chatty:latest
-    container_name: chatty1
-    command: ["-system", "/etc/chatty/system.txt", "-prefix", "✨️ "]
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    ports:
-      - "8081:8080"
-    volumes:
-      - chatty-config:/etc/chatty:ro
-    restart: unless-stopped
 volumes:
   chatty-config:
     driver: local
