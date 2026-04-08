@@ -79,7 +79,8 @@ func main() {
 		if sessionID == "" {
 			sessionID = "default"
 		}
-		slog.Info("creating new chat", "session_id", sessionID)
+		// slog.Info("creating new chat", "session_id", sessionID)
+
 		ctx := r.Context()
 		userContent := &genai.Content{
 			Role:  "user",
