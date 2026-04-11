@@ -11,23 +11,53 @@ import (
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/runner"
 	"google.golang.org/genai"
 )
 
+func initTracer() (*trace.TracerProvider, error) {
+	exporter, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
+	if err != nil {
+		return nil, err
+	}
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(exporter),
+	)
+	otel.SetTracerProvider(tp)
+	return tp, nil
+}
+
 func main() {
 	var (
-		addr   string
-		token  string
-		system string
-		prefix string
+		addr    string
+		token   string
+		system  string
+		prefix  string
+		otelOut bool
 	)
 
 	flag.StringVar(&addr, "addr", ":8080", "TCP host:port to listen on")
 	flag.StringVar(&system, "system", "system.txt", "Path to system instructions file")
 	flag.StringVar(&prefix, "prefix", "", "Prefix to include in response")
+	flag.BoolVar(&otelOut, "otel", false, "Output OpenTelemetry spans to stdout")
 	flag.Parse()
+
+	if otelOut {
+		tp, err := initTracer()
+		if err != nil {
+			slog.Error("failed to initialize tracer", "error", err)
+			os.Exit(1)
+		}
+		defer func() {
+			if err := tp.Shutdown(context.Background()); err != nil {
+				slog.Error("error shutting down tracer provider", "error", err)
+			}
+		}()
+	}
 
 	token = os.Getenv("GEMINI_API_KEY")
 	if token == "" {
