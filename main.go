@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -95,10 +96,25 @@ func main() {
 		}
 
 		metadata := make(map[string]any)
-		for _, key := range []string{"channel", "node_id", "short_name", "long_name", "hops", "snr", "rssi", "node_count"} {
+		for _, key := range []string{"channel", "node_id", "short_name", "long_name", "hops", "snr", "rssi", "node_count", "direct_count"} {
 			value := r.URL.Query().Get(key)
 			if value != "" {
-				metadata[key] = value
+				switch key {
+				case "hops", "node_count", "direct_count":
+					if i, err := strconv.Atoi(value); err == nil {
+						metadata[key] = i
+					} else {
+						metadata[key] = value
+					}
+				case "snr", "rssi":
+					if f, err := strconv.ParseFloat(value, 64); err == nil {
+						metadata[key] = f
+					} else {
+						metadata[key] = value
+					}
+				default:
+					metadata[key] = value
+				}
 			}
 		}
 
