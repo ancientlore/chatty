@@ -25,7 +25,17 @@ func buildRunner(ctx context.Context, token, modelName, systemInstruction string
 		return nil, err
 	}
 
-	const extraContext = "Use the following context:\nNode ID: {node_id?}\nShort Name: {short_name?}\nLong Name: {long_name?}\nHops: {hops?}\nSNR: {snr?}\nRSSI: {rssi?}\nNode Count: {node_count?}"
+	const extraContext = `Here is the real-time radio network telemetry for the user you are chatting with:
+- Node ID: {node_id?} (The unique identifier of their device on the mesh network)
+- Short Name: {short_name?} (The 4-character abbreviation of their device name)
+- Long Name: {long_name?} (The full name of their device)
+- Hops: {hops?} (The number of times the message was relayed to reach us; 0 means a direct connection)
+- SNR: {snr?} (Signal-to-Noise Ratio in dB; higher is better, typically ranges from -20 to +10)
+- RSSI: {rssi?} (Received Signal Strength Indicator in dBm; closer to 0 is better, e.g., -40 is excellent, -120 is very poor)
+Here is some information about the network that is visible to you:
+- Node Count: {node_count?} (Total number of active nodes currently seen by your device on the mesh network)
+- Direct Count: {direct_count?} (Number of nodes directly connected/visible to your device without relays)
+`
 
 	// Create the main agent
 	agentCfg := llmagent.Config{
