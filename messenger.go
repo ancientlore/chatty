@@ -33,6 +33,7 @@ func buildRunner(ctx context.Context, token, modelName, systemInstruction string
 - SNR: {snr?} (Signal-to-Noise Ratio in dB; higher is better, typically ranges from -20 to +10)
 - RSSI: {rssi?} (Received Signal Strength Indicator in dBm; closer to 0 is better, e.g., -40 is excellent, -120 is very poor)
 Here is some information about the network that is visible to you:
+- Channel: {channel?} (The channel you are currently on, or "DM" if you are in a direct message)
 - Node Count: {node_count?} (Total number of active nodes currently seen by your device on the mesh network)
 - Direct Count: {direct_count?} (Number of nodes directly connected/visible to your device without relays)
 `
