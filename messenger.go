@@ -10,9 +10,11 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/geminitool"
 	"google.golang.org/genai"
+
+	"github.com/ancientlore/chatty/meshmtr"
 )
 
-func buildRunner(ctx context.Context, token, modelName, systemInstruction string) (*runner.Runner, error) {
+func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshAPIURL, meshAPIToken string) (*runner.Runner, error) {
 	// Initialize the genai client config
 	clientConfig := &genai.ClientConfig{
 		APIKey:  token,
@@ -38,15 +40,24 @@ Here is some information about the network that is visible to you:
 - Direct Count: {direct_count?} (Number of nodes directly connected/visible to your device without relays)
 `
 
+	tools := []tool.Tool{
+		geminitool.GoogleSearch{},
+	}
+	if meshAPIURL != "" && meshAPIToken != "" {
+		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken)
+		if err != nil {
+			return nil, err
+		}
+		tools = append(tools, meshTools...)
+	}
+
 	// Create the main agent
 	agentCfg := llmagent.Config{
 		Name:        "chat_agent",
 		Description: "A smart assistant handling chat communications.",
 		Model:       geminiModel,
 		Instruction: systemInstruction + "\n" + extraContext,
-		Tools: []tool.Tool{
-			geminitool.GoogleSearch{},
-		},
+		Tools:       tools,
 	}
 
 	chatAgent, err := llmagent.New(agentCfg)

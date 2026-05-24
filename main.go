@@ -66,6 +66,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	meshAPIURL := os.Getenv("MESHMONITOR_API_URL")
+	meshAPIToken := os.Getenv("MESHMONITOR_API_TOKEN")
+
 	var systemInstruction string
 	if content, err := os.ReadFile(system); err == nil {
 		systemInstruction = string(content)
@@ -79,7 +82,7 @@ func main() {
 		}
 	}
 
-	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction)
+	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction, meshAPIURL, meshAPIToken)
 	if err != nil {
 		slog.Error("failed to create runner", "error", err)
 		os.Exit(1)
