@@ -16,7 +16,7 @@ import (
 	"github.com/ancientlore/chatty/meshmtr"
 )
 
-func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshAPIURL, meshAPIToken string) (*runner.Runner, error) {
+func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshAPIURL, meshAPIToken, meshSource string) (*runner.Runner, error) {
 	// Initialize the genai client config
 	clientConfig := &genai.ClientConfig{
 		APIKey:  token,
@@ -53,16 +53,20 @@ Here is some information about the network that is visible to you:
 		return nil, err
 	}
 
+	for _, t := range searchAgentCfg.Tools {
+		slog.Info("Loaded tool", "tool", t.Name())
+	}
+
 	tools := []tool.Tool{
 		agenttool.New(searchAgent, nil),
 	}
 
-	if meshAPIURL != "" && meshAPIToken != "" {
-		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken)
+	if meshAPIURL != "" && meshAPIToken != "" && meshSource != "" {
+		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken, meshSource)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		meshAgentCfg := llmagent.Config{
 			Name:        "mesh_agent",
 			Description: "An agent that can answer questions about the local Meshtastic network, topology, telemetry, and visible nodes.",
@@ -74,6 +78,10 @@ Here is some information about the network that is visible to you:
 			return nil, err
 		}
 		tools = append(tools, agenttool.New(meshAgent, nil))
+
+		for _, t := range meshAgentCfg.Tools {
+			slog.Info("Loaded tool", "tool", t.Name())
+		}
 	}
 
 	for _, t := range tools {
