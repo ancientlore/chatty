@@ -9,6 +9,7 @@ import (
 	"google.golang.org/adk/runner"
 	"google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/agenttool"
 	"google.golang.org/adk/tool/geminitool"
 	"google.golang.org/genai"
 
@@ -41,15 +42,38 @@ Here is some information about the network that is visible to you:
 - Direct Count: {direct_count?} (Number of nodes directly connected/visible to your device without relays)
 `
 
-	tools := []tool.Tool{
-		geminitool.GoogleSearch{},
+	searchAgentCfg := llmagent.Config{
+		Name:        "search_agent",
+		Description: "An agent that can search the web for information.",
+		Model:       geminiModel,
+		Tools:       []tool.Tool{geminitool.GoogleSearch{}},
 	}
+	searchAgent, err := llmagent.New(searchAgentCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	tools := []tool.Tool{
+		agenttool.New(searchAgent, nil),
+	}
+
 	if meshAPIURL != "" && meshAPIToken != "" {
 		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken)
 		if err != nil {
 			return nil, err
 		}
-		tools = append(tools, meshTools...)
+		
+		meshAgentCfg := llmagent.Config{
+			Name:        "mesh_agent",
+			Description: "An agent that can answer questions about the local Meshtastic network, topology, telemetry, and visible nodes.",
+			Model:       geminiModel,
+			Tools:       meshTools,
+		}
+		meshAgent, err := llmagent.New(meshAgentCfg)
+		if err != nil {
+			return nil, err
+		}
+		tools = append(tools, agenttool.New(meshAgent, nil))
 	}
 
 	for _, t := range tools {
