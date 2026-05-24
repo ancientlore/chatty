@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -16,33 +17,98 @@ import (
 )
 
 type Client struct {
-	BaseURL  string
-	Token    string
-	SourceID string
-	HTTP     *http.Client
+	BaseURL    string
+	Token      string
+	SourceName string
+	SourceID   string
+	mu         sync.Mutex
+	HTTP       *http.Client
 }
 
-func NewClient(baseURL, token, sourceID string) *Client {
+func NewClient(baseURL, token, sourceName string) *Client {
 	if !strings.HasSuffix(baseURL, "/") {
 		baseURL += "/"
 	}
 	return &Client{
-		BaseURL:  baseURL,
-		Token:    token,
-		SourceID: sourceID,
-		HTTP:     &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
+		BaseURL:    baseURL,
+		Token:      token,
+		SourceName: sourceName,
+		HTTP:       &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
 	}
 }
 
 var tracer = otel.Tracer("meshmtr")
 
-func (c *Client) get(ctx context.Context, path string) (any, error) {
-	var url string
+func (c *Client) resolveSourceID(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.SourceID != "" {
-		url = c.BaseURL + fmt.Sprintf("sources/%s/", c.SourceID) + strings.TrimPrefix(path, "/")
-	} else {
-		url = c.BaseURL + strings.TrimPrefix(path, "/")
+		return nil
 	}
+
+	url := c.BaseURL + "sources"
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create sources request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.Token)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute sources request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("sources API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	var sources sourcesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&sources); err != nil {
+		return fmt.Errorf("failed to decode sources response: %w", err)
+	}
+
+	if !sources.Success {
+		return fmt.Errorf("fetching sources failed according to API response")
+	}
+
+	for _, s := range sources.Data {
+		if c.SourceName != "" {
+			if strings.EqualFold(s.Name, c.SourceName) {
+				c.SourceID = s.ID
+				break
+			}
+		} else {
+			if s.IsPrimary {
+				c.SourceID = s.ID
+				break
+			}
+		}
+	}
+
+	if c.SourceID == "" {
+		if c.SourceName != "" {
+			slog.Error("Source not found", "source", c.SourceName)
+			return fmt.Errorf("source %q not found", c.SourceName)
+		}
+		slog.Error("No primary source found")
+		return fmt.Errorf("no primary source found")
+	}
+
+	slog.Info("Source ID resolved", "source_id", c.SourceID)
+	return nil
+}
+
+func (c *Client) get(ctx context.Context, path string) (any, error) {
+	if err := c.resolveSourceID(ctx); err != nil {
+		return nil, fmt.Errorf("failed to resolve source ID: %w", err)
+	}
+
+	url := c.BaseURL + fmt.Sprintf("sources/%s/", c.SourceID) + strings.TrimPrefix(path, "/")
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -75,49 +141,14 @@ type EmptyArgs struct{}
 type sourcesResponse struct {
 	Success bool `json:"success"`
 	Data    []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
+		ID        string `json:"id"`
+		Name      string `json:"name"`
+		IsPrimary bool   `json:"isPrimary"`
 	} `json:"data"`
 }
 
 func NewTools(baseURL, token, sourceName string) ([]tool.Tool, error) {
-	// 1. Create a temporary client without a SourceID to fetch the list of sources
-	tempClient := NewClient(baseURL, token, "")
-	rawSources, err := tempClient.get(context.Background(), "sources")
-	if err != nil {
-		slog.Error("Failed to fetch sources from MeshMonitor API", "error", err)
-		return nil, fmt.Errorf("failed to fetch sources: %w", err)
-	}
-
-	// Convert map[string]interface{} (from any) to sourcesResponse structure
-	rawBytes, err := json.Marshal(rawSources)
-	if err != nil {
-		return nil, fmt.Errorf("failed to re-encode sources: %w", err)
-	}
-
-	var sources sourcesResponse
-	if err := json.Unmarshal(rawBytes, &sources); err != nil {
-		return nil, fmt.Errorf("failed to parse sources: %w", err)
-	}
-
-	if !sources.Success {
-		return nil, fmt.Errorf("fetching sources failed according to API response")
-	}
-
-	var sourceID string
-	for _, s := range sources.Data {
-		if strings.EqualFold(s.Name, sourceName) {
-			sourceID = s.ID
-			break
-		}
-	}
-
-	if sourceID == "" {
-		slog.Error("Specified source not found in MeshMonitor API", "source", sourceName)
-		return nil, fmt.Errorf("source %q not found", sourceName)
-	}
-
-	client := NewClient(baseURL, token, sourceID)
+	client := NewClient(baseURL, token, sourceName)
 
 	tools := []tool.Tool{}
 

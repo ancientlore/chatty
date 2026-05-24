@@ -61,7 +61,7 @@ Here is some information about the network that is visible to you:
 		agenttool.New(searchAgent, nil),
 	}
 
-	if meshAPIURL != "" && meshAPIToken != "" && meshSource != "" {
+	if meshAPIURL != "" && meshAPIToken != "" {
 		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken, meshSource)
 		if err != nil {
 			return nil, err
