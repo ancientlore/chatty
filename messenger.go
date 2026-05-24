@@ -69,7 +69,7 @@ Here is some information about the network that is visible to you:
 
 		meshAgentCfg := llmagent.Config{
 			Name:        "mesh_agent",
-			Description: "An agent that can answer questions about the local Meshtastic network, topology, telemetry, channels, and visible nodes.",
+			Description: "An agent that can answer questions about the local Meshtastic network, telemetry, channels, and visible nodes.  Use this agent to answer any questions about the radio network and specific nodes.",
 			Model:       geminiModel,
 			Tools:       meshTools,
 		}

@@ -54,7 +54,7 @@ type nodeCache struct {
 }
 
 type NodesArgs struct {
-	Search *string `json:"search,omitempty" jsonschema:"Search string to filter nodes by exact short name, node ID, or partial long name/short name."`
+	Search *string `json:"search,omitempty" jsonschema:"Search string to filter nodes by short name, node ID, or partial long name/short name."`
 }
 
 func newNodesTool(client *Client, active bool, sinceDays int) (tool.Tool, error) {
