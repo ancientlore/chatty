@@ -32,18 +32,22 @@ type TelemetryResponse struct {
 	Data    []TelemetryData `json:"data"`
 }
 
+type TelemetryArgs struct {
+	NodeID string `json:"nodeId" jsonschema:"Meshtastic node ID, e.g., !a1b2c3d4"`
+}
+
 func newTelemetryTool(client *Client, limit int, offset int, before int64, since int64, telemetryType string) (tool.Tool, error) {
 	return functiontool.New(
 		functiontool.Config{
 			Name:        "get_mesh_telemetry",
-			Description: "Get telemetry data such as air utilization, battery levels, and environmental data for the local node and the network.",
+			Description: "Get telemetry data such as air utilization, battery levels, and environmental data for a specific node on the network.",
 		},
-		func(ctx tool.Context, args EmptyArgs) (*TelemetryResponse, error) {
+		func(ctx tool.Context, args TelemetryArgs) (*TelemetryResponse, error) {
 			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_telemetry")
 			defer span.End()
 			var resp TelemetryResponse
 
-			path := fmt.Sprintf("telemetry?limit=%d&offset=%d", limit, offset)
+			path := fmt.Sprintf("telemetry/%s?limit=%d&offset=%d", args.NodeID, limit, offset)
 			if before != 0 {
 				path += fmt.Sprintf("&before=%d", before)
 			}

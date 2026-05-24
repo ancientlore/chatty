@@ -163,7 +163,7 @@ func NewTools(baseURL, token, sourceName string) ([]tool.Tool, error) {
 	}
 	tools = append(tools, channelsTool)
 
-	since := time.Now().Add(-1 * time.Hour).UnixMilli()
+	since := time.Now().Add(-4 * time.Hour).UnixMilli()
 	telemetryTool, err := newTelemetryTool(client, 200, 0, 0, since, "")
 	if err != nil {
 		return nil, err
