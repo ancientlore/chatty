@@ -2,6 +2,9 @@ package meshmtr
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+	"time"
 
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
@@ -44,21 +47,82 @@ type NodesResponse struct {
 	Data    []NodeData `json:"data"`
 }
 
+type nodeCache struct {
+	mu        sync.RWMutex
+	data      *NodesResponse
+	expiresAt time.Time
+}
+
+type NodesArgs struct {
+	Search *string `json:"search,omitempty" jsonschema:"Search string to filter nodes by exact short name, node ID, or partial long name/short name."`
+}
+
 func newNodesTool(client *Client, active bool, sinceDays int) (tool.Tool, error) {
+	cache := &nodeCache{}
+
 	return functiontool.New(
 		functiontool.Config{
 			Name:        "get_mesh_nodes",
-			Description: "Get a list of all visible nodes on the Meshtastic network.",
+			Description: "Get a list of visible nodes on the Meshtastic network. Can optionally search by node short name, long name, or node ID.",
 		},
-		func(ctx tool.Context, args EmptyArgs) (*NodesResponse, error) {
+		func(ctx tool.Context, args NodesArgs) (*NodesResponse, error) {
 			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_nodes")
 			defer span.End()
-			var resp NodesResponse
-			path := fmt.Sprintf("nodes?active=%t&sinceDays=%d", active, sinceDays)
-			if err := client.get(tctx, path, &resp); err != nil {
-				return nil, err
+
+			var cachedData *NodesResponse
+			cache.mu.RLock()
+			if cache.data != nil && time.Now().Before(cache.expiresAt) {
+				cachedData = cache.data
 			}
-			return &resp, nil
+			cache.mu.RUnlock()
+
+			if cachedData == nil {
+				cache.mu.Lock()
+				if cache.data != nil && time.Now().Before(cache.expiresAt) {
+					cachedData = cache.data
+				} else {
+					var resp NodesResponse
+					path := fmt.Sprintf("nodes?active=%t&sinceDays=%d", active, sinceDays)
+					if err := client.get(tctx, path, &resp); err != nil {
+						cache.mu.Unlock()
+						return nil, err
+					}
+					cache.data = &resp
+					cache.expiresAt = time.Now().Add(15 * time.Minute)
+					cachedData = cache.data
+				}
+				cache.mu.Unlock()
+			}
+
+			if args.Search == nil || *args.Search == "" {
+				return cachedData, nil
+			}
+
+			search := strings.ToLower(strings.TrimPrefix(*args.Search, "!"))
+			var pass1, pass2, pass3 []NodeData
+
+			for _, n := range cachedData.Data {
+				shortName := strings.ToLower(n.ShortName)
+				nodeID := strings.ToLower(strings.TrimPrefix(n.NodeId, "!"))
+				longName := strings.ToLower(n.LongName)
+
+				if shortName == search {
+					pass1 = append(pass1, n)
+				} else if nodeID == search {
+					pass2 = append(pass2, n)
+				} else if strings.Contains(longName, search) || strings.Contains(shortName, search) {
+					pass3 = append(pass3, n)
+				}
+			}
+
+			results := append(pass1, pass2...)
+			results = append(results, pass3...)
+
+			return &NodesResponse{
+				Success: true,
+				Count:   len(results),
+				Data:    results,
+			}, nil
 		},
 	)
 }
