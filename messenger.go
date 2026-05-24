@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/model/gemini"
@@ -49,6 +50,10 @@ Here is some information about the network that is visible to you:
 			return nil, err
 		}
 		tools = append(tools, meshTools...)
+	}
+
+	for _, t := range tools {
+		slog.Info("Loaded tool", "tool", t.Name())
 	}
 
 	// Create the main agent

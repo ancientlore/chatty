@@ -1,3 +1,7 @@
 #!/bin/bash
 
- cat .env | xargs && chatty
+set -a
+source .env
+set +a
+
+chatty

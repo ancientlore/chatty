@@ -1,12 +1,15 @@
 package meshmtr
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 )
@@ -24,13 +27,15 @@ func NewClient(baseURL, token string) *Client {
 	return &Client{
 		BaseURL: baseURL,
 		Token:   token,
-		HTTP:    &http.Client{},
+		HTTP:    &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
 	}
 }
 
-func (c *Client) get(path string) (any, error) {
+var tracer = otel.Tracer("meshmtr")
+
+func (c *Client) get(ctx context.Context, path string) (any, error) {
 	url := c.BaseURL + strings.TrimPrefix(path, "/")
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -70,7 +75,9 @@ func NewTools(baseURL, token string) ([]tool.Tool, error) {
 			Description: "Get general information about the Meshtastic network and node.",
 		},
 		func(ctx tool.Context, args EmptyArgs) (any, error) {
-			return client.get("") // Root endpoint is info
+			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_info")
+			defer span.End()
+			return client.get(tctx, "") // Root endpoint is info
 		},
 	)
 	if err != nil {
@@ -84,7 +91,9 @@ func NewTools(baseURL, token string) ([]tool.Tool, error) {
 			Description: "Get a list of all visible nodes on the Meshtastic network.",
 		},
 		func(ctx tool.Context, args EmptyArgs) (any, error) {
-			return client.get("nodes")
+			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_nodes")
+			defer span.End()
+			return client.get(tctx, "nodes")
 		},
 	)
 	if err != nil {
@@ -98,7 +107,9 @@ func NewTools(baseURL, token string) ([]tool.Tool, error) {
 			Description: "Get information about the configured channels on the local node.",
 		},
 		func(ctx tool.Context, args EmptyArgs) (any, error) {
-			return client.get("channels")
+			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_channels")
+			defer span.End()
+			return client.get(tctx, "channels")
 		},
 	)
 	if err != nil {
@@ -112,7 +123,9 @@ func NewTools(baseURL, token string) ([]tool.Tool, error) {
 			Description: "Get telemetry data such as air utilization, battery levels, and environmental data for the local node and the network.",
 		},
 		func(ctx tool.Context, args EmptyArgs) (any, error) {
-			return client.get("telemetry")
+			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_telemetry")
+			defer span.End()
+			return client.get(tctx, "telemetry")
 		},
 	)
 	if err != nil {
@@ -126,7 +139,9 @@ func NewTools(baseURL, token string) ([]tool.Tool, error) {
 			Description: "Get network topology, routing information, and other network-level statistics.",
 		},
 		func(ctx tool.Context, args EmptyArgs) (any, error) {
-			return client.get("network")
+			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_network")
+			defer span.End()
+			return client.get(tctx, "network")
 		},
 	)
 	if err != nil {
