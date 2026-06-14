@@ -25,7 +25,7 @@ type Client struct {
 	HTTP       *http.Client
 }
 
-func NewClient(baseURL, token, sourceName string) *Client {
+func NewClient(baseURL, token, sourceName string, timeout time.Duration) *Client {
 	if !strings.HasSuffix(baseURL, "/") {
 		baseURL += "/"
 	}
@@ -33,7 +33,10 @@ func NewClient(baseURL, token, sourceName string) *Client {
 		BaseURL:    baseURL,
 		Token:      token,
 		SourceName: sourceName,
-		HTTP:       &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
+		HTTP: &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+			Timeout:   timeout,
+		},
 	}
 }
 
@@ -146,8 +149,8 @@ type sourcesResponse struct {
 	} `json:"data"`
 }
 
-func NewTools(baseURL, token, sourceName string) ([]tool.Tool, error) {
-	client := NewClient(baseURL, token, sourceName)
+func NewTools(baseURL, token, sourceName string, timeout time.Duration) ([]tool.Tool, error) {
+	client := NewClient(baseURL, token, sourceName, timeout)
 
 	tools := []tool.Tool{}
 

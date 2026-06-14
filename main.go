@@ -70,6 +70,15 @@ func main() {
 	meshAPIToken := os.Getenv("MESHMONITOR_API_TOKEN")
 	meshSource := os.Getenv("MESHMONITOR_SOURCE")
 
+	meshAPITimeout := 10 * time.Second
+	if timeoutStr := os.Getenv("MESHMONITOR_API_TIMEOUT"); timeoutStr != "" {
+		if d, err := time.ParseDuration(timeoutStr); err == nil {
+			meshAPITimeout = d
+		} else {
+			slog.Warn("invalid MESHMONITOR_API_TIMEOUT, using default", "value", timeoutStr, "error", err)
+		}
+	}
+
 	var systemInstruction string
 	if content, err := os.ReadFile(system); err == nil {
 		systemInstruction = string(content)
@@ -83,7 +92,7 @@ func main() {
 		}
 	}
 
-	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction, meshAPIURL, meshAPIToken, meshSource)
+	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction, meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
 	if err != nil {
 		slog.Error("failed to create runner", "error", err)
 		os.Exit(1)

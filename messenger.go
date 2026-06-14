@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/model/gemini"
@@ -16,7 +17,7 @@ import (
 	"github.com/ancientlore/chatty/meshmtr"
 )
 
-func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshAPIURL, meshAPIToken, meshSource string) (*runner.Runner, error) {
+func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshAPIURL, meshAPIToken, meshSource string, meshAPITimeout time.Duration) (*runner.Runner, error) {
 	// Initialize the genai client config
 	clientConfig := &genai.ClientConfig{
 		APIKey:  token,
@@ -62,7 +63,7 @@ Here is some information about the network that is visible to you:
 	}
 
 	if meshAPIURL != "" && meshAPIToken != "" {
-		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken, meshSource)
+		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
 		if err != nil {
 			return nil, err
 		}
