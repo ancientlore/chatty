@@ -2,6 +2,7 @@ package meshmtr
 
 import (
 	"fmt"
+	"time"
 
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
@@ -36,7 +37,7 @@ type TelemetryArgs struct {
 	NodeID string `json:"nodeId" jsonschema:"Meshtastic node ID, e.g., !a1b2c3d4"`
 }
 
-func newTelemetryTool(client *Client, limit int, offset int, before int64, since int64, telemetryType string) (tool.Tool, error) {
+func newTelemetryTool(client *Client, limit int, offset int, before int64, since time.Duration, telemetryType string) (tool.Tool, error) {
 	return functiontool.New(
 		functiontool.Config{
 			Name:        "get_mesh_telemetry",
@@ -52,7 +53,8 @@ func newTelemetryTool(client *Client, limit int, offset int, before int64, since
 				path += fmt.Sprintf("&before=%d", before)
 			}
 			if since != 0 {
-				path += fmt.Sprintf("&since=%d", since)
+				sinceMs := time.Now().Add(-since).UnixMilli()
+				path += fmt.Sprintf("&since=%d", sinceMs)
 			}
 			if telemetryType != "" {
 				path += fmt.Sprintf("&type=%s", telemetryType)
