@@ -17,7 +17,7 @@ import (
 	"github.com/ancientlore/chatty/meshmtr"
 )
 
-func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshAPIURL, meshAPIToken, meshSource string, meshAPITimeout time.Duration) (*runner.Runner, error) {
+func buildRunner(ctx context.Context, token, modelName, systemInstruction, searchSystemInstruction, meshAPIURL, meshAPIToken, meshSource string, meshAPITimeout time.Duration) (*runner.Runner, error) {
 	// Initialize the genai client config
 	clientConfig := &genai.ClientConfig{
 		APIKey:  token,
@@ -52,6 +52,7 @@ Here is some information about the network that is visible to you:
 		Name:        "search_agent",
 		Description: "An agent that can search the web for information.",
 		Model:       geminiModel,
+		Instruction: searchSystemInstruction + "\n" + extraContext,
 		Tools:       []tool.Tool{geminitool.GoogleSearch{}},
 	}
 	searchAgent, err := llmagent.New(searchAgentCfg)

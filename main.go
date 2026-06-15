@@ -34,15 +34,17 @@ func initTracer() (*trace.TracerProvider, error) {
 
 func main() {
 	var (
-		addr    string
-		token   string
-		system  string
-		prefix  string
-		otelOut bool
+		addr         string
+		token        string
+		system       string
+		searchSystem string
+		prefix       string
+		otelOut      bool
 	)
 
 	flag.StringVar(&addr, "addr", ":8080", "TCP host:port to listen on")
 	flag.StringVar(&system, "system", "system.txt", "Path to system instructions file")
+	flag.StringVar(&searchSystem, "search-system", "search_system.txt", "Path to search system instructions file")
 	flag.StringVar(&prefix, "prefix", "", "Prefix to include in response")
 	flag.BoolVar(&otelOut, "otel", false, "Output OpenTelemetry spans to stdout")
 	flag.Parse()
@@ -92,7 +94,20 @@ func main() {
 		}
 	}
 
-	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction, meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
+	var searchSystemInstruction string
+	if content, err := os.ReadFile(searchSystem); err == nil {
+		searchSystemInstruction = string(content)
+		slog.Info("loaded search system instructions", "path", searchSystem)
+	} else {
+		if os.IsNotExist(err) {
+			slog.Warn("search system instruction file not found, proceeding without it", "path", searchSystem)
+		} else {
+			slog.Error("failed to read search system instruction file", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction, searchSystemInstruction, meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
 	if err != nil {
 		slog.Error("failed to create runner", "error", err)
 		os.Exit(1)

@@ -2,7 +2,7 @@ services:
   chatty0:
     image: ancientlore/chatty:latest
     container_name: chatty0
-    command: ["-system", "/etc/chatty/system.txt", "-prefix", "✨️ "]
+    command: ["-system", "/etc/chatty/system.txt", "-search-system", "/etc/chatty/search_system.txt", "-prefix", "✨️ "]
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MESHMONITOR_API_URL=${MESHMONITOR_API_URL}
