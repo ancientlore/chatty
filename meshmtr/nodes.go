@@ -54,7 +54,7 @@ type nodeCache struct {
 }
 
 type NodesArgs struct {
-	Search *string `json:"search,omitempty" jsonschema:"Search string to filter nodes by short name, node ID, or partial long name/short name."`
+	Search *string `json:"search,omitempty" jsonschema:"Search string to filter nodes by short name, node ID, or partial long name/short name. Use this to find a node's unique hex nodeId (e.g., '!a1b2c3d4') when you only have its short or long name."`
 }
 
 func newNodesTool(client *Client, active bool, sinceDays int) (tool.Tool, error) {
@@ -63,7 +63,7 @@ func newNodesTool(client *Client, active bool, sinceDays int) (tool.Tool, error)
 	return functiontool.New(
 		functiontool.Config{
 			Name:        "get_mesh_nodes",
-			Description: "Get a list of visible nodes on the Meshtastic network. Can optionally search by node short name, long name, or node ID.",
+			Description: "Get a list of visible nodes on the Meshtastic network. Can optionally search by node short name, long name, or node ID. Use this tool first to resolve short or long names into unique Node IDs before fetching telemetry.",
 		},
 		func(ctx tool.Context, args NodesArgs) (*NodesResponse, error) {
 			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_nodes")

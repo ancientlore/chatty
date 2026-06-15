@@ -61,26 +61,14 @@ Here is some information about the network that is visible to you:
 	tools := []tool.Tool{
 		agenttool.New(searchAgent, nil),
 	}
-
 	if meshAPIURL != "" && meshAPIToken != "" {
 		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
 		if err != nil {
 			return nil, err
 		}
+		tools = append(tools, meshTools...)
 
-		meshAgentCfg := llmagent.Config{
-			Name:        "mesh_agent",
-			Description: "An agent that can answer questions about the local Meshtastic network, telemetry, channels, and visible nodes.  Use this agent to answer any questions about the radio network and specific nodes.",
-			Model:       geminiModel,
-			Tools:       meshTools,
-		}
-		meshAgent, err := llmagent.New(meshAgentCfg)
-		if err != nil {
-			return nil, err
-		}
-		tools = append(tools, agenttool.New(meshAgent, nil))
-
-		for _, t := range meshAgentCfg.Tools {
+		for _, t := range meshTools {
 			slog.Info("Loaded tool", "tool", t.Name())
 		}
 	}
