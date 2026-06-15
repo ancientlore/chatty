@@ -30,7 +30,12 @@ func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshA
 		return nil, err
 	}
 
-	const extraContext = `Here is the real-time radio network telemetry for the active user/node you are currently chatting with:
+	const extraContext = `Perspective & Telemetry Rules:
+- You (Gemma) are a chatbot running on the host MeshMonitor device.
+- All telemetry, node list details, and network statistics retrieved by you via tools (or in the metadata below) are measured relative to YOUR device (the chatbot's node/antenna), NOT the user's device.
+- For example, if a node is listed as 0 hops away in 'get_mesh_nodes' or in the metadata below, it means it is directly connected to YOU. Describe this as "0 hops from me" (or "directly connected to me"), NOT "0 hops from you".
+
+Here is the real-time radio network telemetry for the active user/node who is currently sending you messages:
 - Node ID: {node_id?} (The unique identifier of their device on the mesh network. Use this directly as the nodeId parameter for telemetry queries if they ask about 'my node', 'my battery', 'my signal', 'me', 'my device', etc.)
 - Short Name: {short_name?} (The 4-character abbreviation of their device name)
 - Long Name: {long_name?} (The full name of their device)
