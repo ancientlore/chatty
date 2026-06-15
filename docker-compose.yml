@@ -5,6 +5,10 @@ services:
     command: ["-system", "/etc/chatty/system.txt", "-prefix", "✨️ "]
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MESHMONITOR_API_URL=${MESHMONITOR_API_URL}
+      - MESHMONITOR_API_TOKEN=${MESHMONITOR_API_TOKEN}
+      - MESHMONITOR_SOURCE=${MESHMONITOR_SOURCE}
+      - MESHMONITOR_API_TIMEOUT=${MESHMONITOR_API_TIMEOUT}
     ports:
       - "8080:8080"
     volumes:
