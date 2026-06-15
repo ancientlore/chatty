@@ -30,8 +30,8 @@ func buildRunner(ctx context.Context, token, modelName, systemInstruction, meshA
 		return nil, err
 	}
 
-	const extraContext = `Here is the real-time radio network telemetry for the user you are chatting with:
-- Node ID: {node_id?} (The unique identifier of their device on the mesh network)
+	const extraContext = `Here is the real-time radio network telemetry for the active user/node you are currently chatting with:
+- Node ID: {node_id?} (The unique identifier of their device on the mesh network. Use this directly as the nodeId parameter for telemetry queries if they ask about 'my node', 'my battery', 'my signal', 'me', 'my device', etc.)
 - Short Name: {short_name?} (The 4-character abbreviation of their device name)
 - Long Name: {long_name?} (The full name of their device)
 - Hops: {hops?} (The number of times the message was relayed to reach us; 0 means a direct connection)
@@ -55,7 +55,7 @@ Here is some information about the network that is visible to you:
 	}
 
 	for _, t := range searchAgentCfg.Tools {
-		slog.Info("Loaded tool", "tool", t.Name())
+		slog.Info("Loaded subtool", "tool", t.Name())
 	}
 
 	tools := []tool.Tool{
@@ -67,10 +67,6 @@ Here is some information about the network that is visible to you:
 			return nil, err
 		}
 		tools = append(tools, meshTools...)
-
-		for _, t := range meshTools {
-			slog.Info("Loaded tool", "tool", t.Name())
-		}
 	}
 
 	for _, t := range tools {
