@@ -47,29 +47,12 @@ Here is some information about the network that is visible to you:
 - Node Count: {node_count?} (Total number of active nodes currently seen by your device on the mesh network)
 - Direct Count: {direct_count?} (Number of nodes directly connected/visible to your device without relays)
 `
-	const extraSearchContext = `Perspective & Telemetry Rules:
-- You are a search agent running on behalf of Gemma, a chatbot running on the host MeshMonitor device.
-- All telemetry, node list details, and network statistics in the metadata below are measured relative to Gemma's device (the chatbot's node/antenna), NOT the user's device.
-- For example, if a node is listed as 0 hops away in the metadata below, it means it is directly connected to Gemma's node. Describe this as "0 hops from me" (or "directly connected to me"), NOT "0 hops from you".
-- You are allowed to answer general search queries as long as they meet Google's Safe Search requirements (no gambling, pornography, violence, medical, or controversial content). Let's keep it nice here.
-Here is the real-time radio network telemetry for the active user/node who is currently sending you messages:
-- Node ID: {node_id?} (The unique identifier of their device on the mesh network. Use this directly as the nodeId parameter for telemetry queries if they ask about 'my node', 'my battery', 'my signal', 'me', 'my device', etc.)
-- Short Name: {short_name?} (The 4-character abbreviation of their device name)
-- Long Name: {long_name?} (The full name of their device)
-- Hops: {hops?} (The number of times the message was relayed to reach us; 0 means a direct connection)
-- SNR: {snr?} (Signal-to-Noise Ratio in dB; higher is better, typically ranges from -20 to +10)
-- RSSI: {rssi?} (Received Signal Strength Indicator in dBm; closer to 0 is better, e.g., -40 is excellent, -120 is very poor)
-Here is some information about the network that is visible to you:
-- Channel: {channel?} (The channel you are currently on, or "DM" if you are in a direct message)
-- Node Count: {node_count?} (Total number of active nodes currently seen by your device on the mesh network)
-- Direct Count: {direct_count?} (Number of nodes directly connected/visible to your device without relays)
-`
 
 	searchAgentCfg := llmagent.Config{
 		Name:        "search_agent",
 		Description: "An agent that can search the web for information.",
 		Model:       geminiModel,
-		Instruction: searchSystemInstruction + "\n" + extraSearchContext,
+		Instruction: searchSystemInstruction,
 		Tools:       []tool.Tool{geminitool.GoogleSearch{}},
 	}
 	searchAgent, err := llmagent.New(searchAgentCfg)
@@ -84,6 +67,7 @@ Here is some information about the network that is visible to you:
 	tools := []tool.Tool{
 		agenttool.New(searchAgent, nil),
 	}
+
 	if meshAPIURL != "" && meshAPIToken != "" {
 		meshTools, err := meshmtr.NewTools(meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
 		if err != nil {
@@ -98,11 +82,18 @@ Here is some information about the network that is visible to you:
 
 	// Create the main agent
 	agentCfg := llmagent.Config{
-		Name:        "chat_agent",
-		Description: "A smart assistant handling chat communications.",
-		Model:       geminiModel,
-		Instruction: systemInstruction + "\n" + extraContext,
-		Tools:       tools,
+		Name:              "chat_agent",
+		Description:       "A smart assistant handling chat communications.",
+		Model:             geminiModel,
+		GlobalInstruction: systemInstruction + "\n" + extraContext,
+		Tools:             tools,
+		/*
+			GenerateContentConfig: &genai.GenerateContentConfig{
+				ToolConfig: &genai.ToolConfig{
+					IncludeServerSideToolInvocations: genai.Ptr(true),
+				},
+			},
+		*/
 	}
 
 	chatAgent, err := llmagent.New(agentCfg)

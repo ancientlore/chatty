@@ -34,7 +34,7 @@ type TelemetryResponse struct {
 }
 
 type TelemetryArgs struct {
-	NodeID string `json:"nodeId" jsonschema:"Meshtastic unique hex node ID, e.g., !a1b2c3d4. Must be a valid node ID starting with '!'. It does not accept short names or long names directly. If the user asks about themselves or their own device (e.g., 'my battery', 'my signal', 'me'), extract the Node ID from your system instructions context (under 'Node ID') and use it here."`
+	NodeID string `json:"nodeId" jsonschema:"The unique Meshtastic node ID starting with '!' (e.g., '!a1b2c3d4'). IMPORTANT: If you only have a short name (e.g. 'ABCD') or a long name, you MUST first search for the node using get_mesh_nodes to retrieve its Node ID before calling this tool. It does not accept short names or long names directly. If the user asks about themselves or their own device (e.g., 'my battery', 'my signal', 'me'), extract the Node ID from your system instructions context (under 'Node ID') and use it here."`
 }
 
 func newTelemetryTool(client *Client, limit int, offset int, before int64, since time.Duration, telemetryType string) (tool.Tool, error) {

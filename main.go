@@ -107,7 +107,10 @@ func main() {
 		}
 	}
 
-	run, err := buildRunner(context.Background(), token, "gemini-2.5-flash-lite", systemInstruction, searchSystemInstruction, meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
+	const aiModel = "gemini-2.5-flash-lite"
+	// const aiModel = "gemini-3.1-flash-lite"
+
+	run, err := buildRunner(context.Background(), token, aiModel, systemInstruction, searchSystemInstruction, meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
 	if err != nil {
 		slog.Error("failed to create runner", "error", err)
 		os.Exit(1)
