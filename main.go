@@ -72,7 +72,7 @@ func main() {
 	meshAPIToken := os.Getenv("MESHMONITOR_API_TOKEN")
 	meshSource := os.Getenv("MESHMONITOR_SOURCE")
 
-	meshAPITimeout := 10 * time.Second
+	meshAPITimeout := 15 * time.Second
 	if timeoutStr := os.Getenv("MESHMONITOR_API_TIMEOUT"); timeoutStr != "" {
 		if d, err := time.ParseDuration(timeoutStr); err == nil {
 			meshAPITimeout = d
@@ -107,8 +107,8 @@ func main() {
 		}
 	}
 
-	const aiModel = "gemini-2.5-flash-lite"
-	// const aiModel = "gemini-3.1-flash-lite"
+	// const aiModel = "gemini-2.5-flash-lite"
+	const aiModel = "gemini-3.1-flash-lite"
 
 	run, err := buildRunner(context.Background(), token, aiModel, systemInstruction, searchSystemInstruction, meshAPIURL, meshAPIToken, meshSource, meshAPITimeout)
 	if err != nil {
