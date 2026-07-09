@@ -8,7 +8,7 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.44.0
 	go.opentelemetry.io/otel/sdk v1.44.0
 	google.golang.org/adk v1.5.0
-	google.golang.org/genai v1.62.0
+	google.golang.org/genai v1.63.0
 )
 
 require (
