@@ -1,13 +1,13 @@
 module github.com/ancientlore/chatty
 
-go 1.26.2
+go 1.26.5
 
 require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.44.0
 	go.opentelemetry.io/otel/sdk v1.44.0
-	google.golang.org/adk v1.5.1
+	google.golang.org/adk/v2 v2.1.0
 	google.golang.org/genai v1.65.0
 )
 

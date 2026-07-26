@@ -13,7 +13,7 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"google.golang.org/adk/tool"
+	"google.golang.org/adk/v2/tool"
 )
 
 type Client struct {

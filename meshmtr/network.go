@@ -1,8 +1,9 @@
 package meshmtr
 
 import (
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type NetworkData struct {
@@ -23,7 +24,7 @@ func newNetworkTool(client *Client) (tool.Tool, error) {
 			Name:        "get_mesh_network",
 			Description: "Get network-level statistics like the number of total and active nodes seen on the network. This tool does not return information about a specific node.",
 		},
-		func(ctx tool.Context, args EmptyArgs) (*NetworkResponse, error) {
+		func(ctx agent.Context, args EmptyArgs) (*NetworkResponse, error) {
 			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_network")
 			defer span.End()
 			var resp NetworkResponse

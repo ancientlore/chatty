@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type TelemetryData struct {
@@ -43,7 +44,7 @@ func newTelemetryTool(client *Client, limit int, offset int, before int64, since
 			Name:        "get_mesh_telemetry",
 			Description: "Get telemetry data such as air utilization, battery levels, and environmental data for a specific node on the network. IMPORTANT: This tool requires a unique hex Node ID starting with '!'. If you only have a short name (e.g. 'ABCD') or long name, you MUST call 'get_mesh_nodes' first to look up and resolve the unique Node ID.",
 		},
-		func(ctx tool.Context, args TelemetryArgs) (*TelemetryResponse, error) {
+		func(ctx agent.Context, args TelemetryArgs) (*TelemetryResponse, error) {
 			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_telemetry")
 			defer span.End()
 			var resp TelemetryResponse

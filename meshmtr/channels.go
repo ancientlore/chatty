@@ -1,8 +1,9 @@
 package meshmtr
 
 import (
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type ChannelData struct {
@@ -30,7 +31,7 @@ func newChannelsTool(client *Client) (tool.Tool, error) {
 			Name:        "get_mesh_channels",
 			Description: "Get information about the configured channels on the local node, including the name, role, channel ID, position precision, and encryption status.",
 		},
-		func(ctx tool.Context, args EmptyArgs) (*ChannelsResponse, error) {
+		func(ctx agent.Context, args EmptyArgs) (*ChannelsResponse, error) {
 			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_channels")
 			defer span.End()
 			var resp ChannelsResponse

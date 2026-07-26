@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type NodeData struct {
@@ -65,7 +66,7 @@ func newNodesTool(client *Client, active bool, sinceDays int) (tool.Tool, error)
 			Name:        "get_mesh_nodes",
 			Description: "Get a list of visible nodes on the Meshtastic network. Can optionally search by node short name, long name, or node ID. Use this tool first to resolve short or long names into unique Node IDs before fetching telemetry.",
 		},
-		func(ctx tool.Context, args NodesArgs) (*NodesResponse, error) {
+		func(ctx agent.Context, args NodesArgs) (*NodesResponse, error) {
 			tctx, span := tracer.Start(ctx, "meshmtr.get_mesh_nodes")
 			defer span.End()
 

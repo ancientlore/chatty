@@ -15,8 +15,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/trace"
-	"google.golang.org/adk/agent"
-	"google.golang.org/adk/runner"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/runner"
 	"google.golang.org/genai"
 )
 
