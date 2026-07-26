@@ -21,7 +21,7 @@ import (
 )
 
 type TimeArgs struct {
-	Timezone string `json:"timezone,omitempty" jsonschema:"Optional location or IANA timezone name (e.g., 'UTC', 'America/New_York'). Defaults to local server time if omitted."`
+	Timezone string `json:"timezone,omitempty" jsonschema:"Only set this if the user explicitly requested a specific timezone or city (e.g. 'UTC', 'America/New_York'). Leave EMPTY if the user simply asks for the current time."`
 }
 
 type TimeResponse struct {
@@ -37,7 +37,8 @@ func newTimeTool() (tool.Tool, error) {
 		},
 		func(ctx agent.Context, args TimeArgs) (*TimeResponse, error) {
 			t := time.Now()
-			tzName := "Local"
+			tzName := t.Location().String()
+
 			if args.Timezone != "" {
 				if strings.EqualFold(args.Timezone, "UTC") {
 					t = t.UTC()
@@ -47,6 +48,7 @@ func newTimeTool() (tool.Tool, error) {
 					tzName = args.Timezone
 				}
 			}
+
 			return &TimeResponse{
 				CurrentTime: t.Format("Monday, Jan 2, 2006 15:04:05 MST"),
 				Timezone:    tzName,
