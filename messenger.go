@@ -3,19 +3,57 @@ package main
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
+	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/agenttool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/adk/v2/tool/geminitool"
 	"google.golang.org/genai"
 
 	"github.com/ancientlore/chatty/meshmtr"
 )
+
+type TimeArgs struct {
+	Timezone string `json:"timezone,omitempty" jsonschema:"Optional location or IANA timezone name (e.g., 'UTC', 'America/New_York'). Defaults to local server time if omitted."`
+}
+
+type TimeResponse struct {
+	CurrentTime string `json:"currentTime" jsonschema:"The current date and time formatted"`
+	Timezone    string `json:"timezone" jsonschema:"The timezone used"`
+}
+
+func newTimeTool() (tool.Tool, error) {
+	return functiontool.New(
+		functiontool.Config{
+			Name:        "get_current_time",
+			Description: "Get the live current date and time on the server. Always use this tool whenever asked for the current time, date, or day of the week.",
+		},
+		func(ctx agent.Context, args TimeArgs) (*TimeResponse, error) {
+			t := time.Now()
+			tzName := "Local"
+			if args.Timezone != "" {
+				if strings.EqualFold(args.Timezone, "UTC") {
+					t = t.UTC()
+					tzName = "UTC"
+				} else if loc, err := time.LoadLocation(args.Timezone); err == nil {
+					t = t.In(loc)
+					tzName = args.Timezone
+				}
+			}
+			return &TimeResponse{
+				CurrentTime: t.Format("Monday, Jan 2, 2006 15:04:05 MST"),
+				Timezone:    tzName,
+			}, nil
+		},
+	)
+}
 
 func buildRunner(ctx context.Context, token, modelName, systemInstruction, searchSystemInstruction, meshAPIURL, meshAPIToken, meshSource string, meshAPITimeout time.Duration) (*runner.Runner, error) {
 	// Initialize the genai client config
@@ -64,8 +102,14 @@ Here is some information about the network that is visible to you:
 		slog.Info("Loaded subtool", "tool", t.Name())
 	}
 
+	timeTool, err := newTimeTool()
+	if err != nil {
+		return nil, err
+	}
+
 	tools := []tool.Tool{
 		agenttool.New(searchAgent, nil),
+		timeTool,
 	}
 
 	if meshAPIURL != "" && meshAPIToken != "" {
