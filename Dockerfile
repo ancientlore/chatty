@@ -1,5 +1,5 @@
-ARG GO_VERSION=1.26
-ARG IMG_VERSION=1.26
+ARG GO_VERSION=1.27
+ARG IMG_VERSION=1.27
 
 FROM --platform=${BUILDPLATFORM} golang:${GO_VERSION} AS builder
 WORKDIR /go/src/github.com/ancientlore/chatty
